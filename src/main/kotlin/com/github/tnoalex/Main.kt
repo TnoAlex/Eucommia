@@ -22,9 +22,9 @@ private var storeOutStream = FileOutputStream.nullOutputStream()
 
 fun main(args: Array<String>) {
     val rootPath = args[0]
-    val treeSitterPath = args[1]
-    val storeSuffixPath = args[2]
-    System.setProperty("gt.ts.path", treeSitterPath)
+    val treeSitterPath = args.getOrNull(1) ?: "./tree-sitter-parser/tree-sitter-parser.py"
+    val storeSuffixPath = args.getOrNull(2) ?: rootPath
+    System.setProperty("gt.ts.path", File(treeSitterPath).canonicalPath)
     Run.initGenerators()
     val rootFile = File(rootPath)
     visitRootFiles(rootFile, storeSuffixPath)
@@ -100,7 +100,7 @@ private fun findAstDiff(
     commitId: String
 ) {
     val treeGenerator = getTreeGenerator(fileExtensions)
-    val diff = Diff.compute(newContentReader, oldContentReader, treeGenerator, null, GumtreeProperties())
+    val diff = Diff.compute(oldContentReader, newContentReader, treeGenerator, null, GumtreeProperties())
     val allNodesClassifier = diff.createAllNodeClassifier()
     val collector = ArrayList<String>()
     handles.handle(allNodesClassifier, collector)
