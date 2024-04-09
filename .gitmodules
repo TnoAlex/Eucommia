@@ -1,0 +1,3 @@
+[submodule "tree-sitter-parser"]
+	path = tree-sitter-parser
+	url = https://github.com/TnoAlex/tree-sitter-parser.git
