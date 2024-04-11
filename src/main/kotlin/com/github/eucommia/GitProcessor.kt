@@ -16,7 +16,7 @@ object GitProcessor {
     @JvmStatic
     external fun visitGitRepo(
         path: String, visitor: (
-            commitId: String, newFilePath: String, newContent: String, oldContent: String
+            commitId: String, newFilePath: String, oldContent: String, newContent: String
         ) -> Unit
     )
 }

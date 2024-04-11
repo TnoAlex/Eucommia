@@ -1,16 +1,16 @@
-package com.github.eucommia
+package com.github.eucommia.handle
 
 import com.github.gumtreediff.actions.TreeClassifier
 
-abstract class AbstractHandle {
-    private var nextHandle: AbstractHandle? = null
+abstract class AbstractHandler {
+    private var nextHandle: AbstractHandler? = null
     abstract val handleName: String
 
-    fun addHandle(abstractHandle: AbstractHandle) {
+    fun addHandle(abstractHandler: AbstractHandler) {
         if (nextHandle == null) {
-            nextHandle = abstractHandle
+            nextHandle = abstractHandler
         } else {
-            nextHandle!!.addHandle(abstractHandle)
+            nextHandle!!.addHandle(abstractHandler)
         }
     }
 
@@ -24,7 +24,7 @@ abstract class AbstractHandle {
 
     abstract fun attracted(tree: TreeClassifier): Boolean
 
-    class DefaultHandle : AbstractHandle() {
+    class DefaultHandler : AbstractHandler() {
         override val handleName: String
             get() = "default"
 
