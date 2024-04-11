@@ -1,5 +1,7 @@
 plugins {
     kotlin("jvm") version "1.9.22"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+    application
 }
 
 group = "com.github.tnoalex"
@@ -25,4 +27,8 @@ tasks.test {
 }
 kotlin {
     jvmToolchain(17)
+}
+
+application {
+    mainClass.set("com.github.eucommia.MainKt")
 }

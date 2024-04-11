@@ -48,7 +48,11 @@ private fun visitGitRepo(gitRepo: File, storePath: String) {
     }
     storeOutStream = FileOutputStream(resultStoreFile)
     storeOutStream.use {
-        GitProcessor.visitGitRepo(gitRepo.path, ::findAstDiff)
+        try {
+            GitProcessor.visitGitRepo(gitRepo.path, ::findAstDiff)
+        } catch (e: Exception) {
+            logger.error("visit git repo failed", e)
+        }
     }
     storeOutStream = FileOutputStream.nullOutputStream()
     logger.info("Finished git repo: ${gitRepo.name},result has be wrote in: $resultStorePath")
