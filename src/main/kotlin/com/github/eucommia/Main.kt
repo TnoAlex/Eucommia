@@ -3,6 +3,7 @@ package com.github.eucommia
 import com.github.eucommia.handle.getAllHandle
 import com.github.eucommia.util.ifFalse
 import com.github.eucommia.util.ifTrue
+import com.github.eucommia.util.removeComments
 import com.github.gumtreediff.actions.Diff
 import com.github.gumtreediff.client.Run
 import com.github.gumtreediff.matchers.GumtreeProperties
@@ -14,7 +15,7 @@ import java.io.FileOutputStream
 import java.io.StringReader
 
 private val handles = getAllHandle()
-private var storeOutStream = FileOutputStream.nullOutputStream()
+private var resultCollector = ArrayList<String>()
 private val logger = LoggerFactory.getLogger("Eucommia")
 
 fun main(args: Array<String>) {
@@ -46,15 +47,11 @@ private fun visitGitRepo(gitRepo: File, storePath: String) {
     if (!resultStoreFile.exists()) {
         resultStoreFile.createNewFile()
     }
-    storeOutStream = FileOutputStream(resultStoreFile)
+    val storeOutStream = FileOutputStream(resultStoreFile)
+    GitProcessor.visitGitRepo(gitRepo.path, ::findAstDiff)
     storeOutStream.use {
-        try {
-            GitProcessor.visitGitRepo(gitRepo.path, ::findAstDiff)
-        } catch (e: Exception) {
-            logger.error("visit git repo failed", e)
-        }
+        it.write(Gson().toJson(resultCollector).toByteArray())
     }
-    storeOutStream = FileOutputStream.nullOutputStream()
     logger.info("Finished git repo: ${gitRepo.name},result has be wrote in: $resultStorePath")
 }
 
@@ -65,14 +62,18 @@ private fun checkGitRepo(file: File): Boolean {
 private fun findAstDiff(
     commitId: String, newFilePath: String, oldContent: String, newContent: String
 ) {
-    val treeGenerator = getTreeGenerator(newFilePath.split(".").last())
-    val newContentReader = StringReader(newContent)
-    val oldContentReader = StringReader(oldContent)
-    val diff = Diff.compute(oldContentReader, newContentReader, treeGenerator, null, GumtreeProperties())
-    val allNodesClassifier = diff.createAllNodeClassifier()
-    val collector = ArrayList<String>()
-    handles.handle(allNodesClassifier, collector)
-    writeResult(commitId, newFilePath, collector)
+    try {
+        val treeGenerator = getTreeGenerator(newFilePath.split(".").last())
+        val newContentReader = StringReader(removeComments(newContent))
+        val oldContentReader = StringReader(removeComments(oldContent))
+        val diff = Diff.compute(oldContentReader, newContentReader, treeGenerator, null, GumtreeProperties())
+        val allNodesClassifier = diff.createAllNodeClassifier()
+        val collector = ArrayList<String>()
+        handles.handle(allNodesClassifier, collector)
+        writeResult(commitId, newFilePath, collector)
+    } catch (e: Exception) {
+        logger.error("visit git repo failed", e)
+    }
 }
 
 private fun getTreeGenerator(fileExtensions: String): String {
@@ -84,7 +85,9 @@ private fun getTreeGenerator(fileExtensions: String): String {
 }
 
 private fun writeResult(commitId: String, filePath: String, collector: ArrayList<String>) {
-    val res = mapOf("commitId" to commitId, "path" to filePath, "found" to collector)
-    val json = Gson().toJson(res).toByteArray()
-    storeOutStream.write(json)
+    collector.isEmpty().ifTrue {
+        val res = mapOf("commitId" to commitId, "path" to filePath, "found" to collector)
+        val json = Gson().toJson(res)
+        resultCollector.add(json)
+    }
 }
