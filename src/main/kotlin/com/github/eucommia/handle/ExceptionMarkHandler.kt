@@ -10,8 +10,8 @@ class ExceptionMarkHandler : AbstractHandler() {
     override fun attracted(tree: TreeClassifier): Boolean {
         return tree.insertedDsts.any {
             it.type.name == "class_modifier" &&
-                    it.getChild(0).label == "@" &&
-                    it.getChild("1.0.0").label == "Throws"
+                    it.children.any { c -> c.label == "@" }&&
+                    it.children.any { c -> c.label == "Throws" }
         }
     }
 }

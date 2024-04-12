@@ -104,7 +104,7 @@ private fun writeResult(commitId: String, filePath: String, collector: ArrayList
         resultCollector.add(json)
         count++
         if (count % 5 == 0) {
-            val tempFile = File("${resultStorePath}_$count$.json")
+            val tempFile = File("${resultStorePath}_$count.json")
             if (!tempFile.exists()){
                 tempFile.createNewFile()
             }
