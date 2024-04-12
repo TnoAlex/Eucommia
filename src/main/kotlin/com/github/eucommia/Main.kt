@@ -13,11 +13,12 @@ import java.io.File
 import java.io.FileFilter
 import java.io.FileOutputStream
 import java.io.StringReader
-import kotlin.math.log
 
 private val handles = getAllHandle()
 private var resultCollector = ArrayList<String>()
 private val logger = LoggerFactory.getLogger("Eucommia")
+private var resultStorePath = ""
+private var count = 0
 
 fun main(args: Array<String>) {
     val rootPath = args[0]
@@ -43,8 +44,13 @@ private fun visitRootFiles(rootFile: File, storePath: String) {
 }
 
 private fun visitGitRepo(gitRepo: File, storePath: String) {
-    val resultStorePath = "$storePath${File.separatorChar}${gitRepo.name}.json"
-    val resultStoreFile = File(resultStorePath)
+    resultStorePath = "$storePath${File.separatorChar}${gitRepo.name}"
+    var resultStoreFile = File(resultStorePath)
+    if (!resultStoreFile.exists()) {
+        resultStoreFile.mkdirs()
+    }
+    resultStorePath = "$resultStorePath${File.separatorChar}${gitRepo.name}"
+    resultStoreFile = File("$resultStorePath.json")
     if (!resultStoreFile.exists()) {
         resultStoreFile.createNewFile()
     }
@@ -57,6 +63,7 @@ private fun visitGitRepo(gitRepo: File, storePath: String) {
     storeOutStream.use {
         it.write(Gson().toJson(resultCollector).toByteArray())
         resultCollector.clear()
+        count = 0
     }
     logger.info("Finished git repo: ${gitRepo.name},result has be wrote in: $resultStorePath")
 }
@@ -94,7 +101,18 @@ private fun writeResult(commitId: String, filePath: String, collector: ArrayList
     collector.isNotEmpty().ifTrue {
         val res = mapOf("commitId" to commitId, "path" to filePath, "found" to collector)
         val json = Gson().toJson(res)
-        logger.info("Find commit : $json")
         resultCollector.add(json)
+        count++
+        if (count % 5 == 0) {
+            val tempFile = File("${resultStorePath}_$count$.json")
+            if (!tempFile.exists()){
+                tempFile.createNewFile()
+            }
+            val outputStream = FileOutputStream(tempFile)
+            outputStream.use { s ->
+                val tmpJson = Gson().toJson(resultCollector.subList(count - 5, count))
+                s.write(tmpJson.toByteArray())
+            }
+        }
     }
 }
