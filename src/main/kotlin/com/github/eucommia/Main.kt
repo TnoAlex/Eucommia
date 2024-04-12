@@ -13,6 +13,7 @@ import java.io.File
 import java.io.FileFilter
 import java.io.FileOutputStream
 import java.io.StringReader
+import kotlin.math.log
 
 private val handles = getAllHandle()
 private var resultCollector = ArrayList<String>()
@@ -48,9 +49,14 @@ private fun visitGitRepo(gitRepo: File, storePath: String) {
         resultStoreFile.createNewFile()
     }
     val storeOutStream = FileOutputStream(resultStoreFile)
-    GitProcessor.visitGitRepo(gitRepo.path, ::findAstDiff)
+    try {
+        GitProcessor.visitGitRepo(gitRepo.path, ::findAstDiff)
+    } catch (e: Exception) {
+        logger.error("Error", e)
+    }
     storeOutStream.use {
         it.write(Gson().toJson(resultCollector).toByteArray())
+        resultCollector.clear()
     }
     logger.info("Finished git repo: ${gitRepo.name},result has be wrote in: $resultStorePath")
 }
@@ -85,9 +91,10 @@ private fun getTreeGenerator(fileExtensions: String): String {
 }
 
 private fun writeResult(commitId: String, filePath: String, collector: ArrayList<String>) {
-    collector.isEmpty().ifTrue {
+    collector.isNotEmpty().ifTrue {
         val res = mapOf("commitId" to commitId, "path" to filePath, "found" to collector)
         val json = Gson().toJson(res)
+        logger.info("Find commit : $json")
         resultCollector.add(json)
     }
 }
