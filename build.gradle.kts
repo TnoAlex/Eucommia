@@ -19,6 +19,8 @@ dependencies {
     implementation("org.reflections:reflections:0.10.2")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("ch.qos.logback:logback-classic:1.4.14")
+    implementation("com.github.ajalt.clikt:clikt:4.2.2")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
     testImplementation(kotlin("test"))
 }
 
@@ -30,5 +32,5 @@ kotlin {
 }
 
 application {
-    mainClass.set("com.github.eucommia.MainKt")
+    mainClass.set("com.github.tnoalex.MainKt")
 }

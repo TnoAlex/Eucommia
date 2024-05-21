@@ -1,4 +1,4 @@
-package com.github.eucommia.handle
+package com.github.tnoalex.handle
 
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners
@@ -8,7 +8,7 @@ fun getAllHandle(): AbstractHandler {
     val handle = AbstractHandler.DefaultHandler()
     Reflections(
         ConfigurationBuilder()
-            .forPackages("com.github.eucommia")
+            .forPackages("com.github.tnoalex")
             .addScanners(Scanners.SubTypes)
     ).getSubTypesOf(AbstractHandler::class.java)
         .filter { it.javaClass != AbstractHandler.DefaultHandler::class.java }

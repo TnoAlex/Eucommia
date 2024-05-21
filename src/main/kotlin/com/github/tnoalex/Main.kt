@@ -1,18 +1,27 @@
-package com.github.eucommia
+package com.github.tnoalex
 
-import com.github.eucommia.handle.getAllHandle
-import com.github.eucommia.util.ifFalse
-import com.github.eucommia.util.ifTrue
-import com.github.eucommia.util.removeComments
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.LoggerContext
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.default
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.file
+import com.github.ajalt.clikt.parameters.types.int
 import com.github.gumtreediff.actions.Diff
 import com.github.gumtreediff.client.Run
 import com.github.gumtreediff.matchers.GumtreeProperties
+import com.github.tnoalex.handle.getAllHandle
+import com.github.tnoalex.util.ifFalse
+import com.github.tnoalex.util.ifTrue
 import com.google.gson.Gson
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileFilter
 import java.io.FileOutputStream
-import java.io.StringReader
+import java.io.Reader
 
 private val handles = getAllHandle()
 private var resultCollector = ArrayList<String>()
@@ -20,30 +29,60 @@ private val logger = LoggerFactory.getLogger("Eucommia")
 private var resultStorePath = ""
 private var count = 0
 
-fun main(args: Array<String>) {
-    val rootPath = args[0]
-    val storeSuffixPath = args.getOrNull(1) ?: rootPath
-    Run.initGenerators()
-    val rootFile = File(rootPath)
-    visitRootFiles(rootFile, storeSuffixPath)
+
+class CliParser : CliktCommand(name = "eucommia") {
+    private val rootPath by argument(name = "rootPath", help = "The root path of git repositories").file(
+        mustExist = true,
+        canBeFile = false,
+        canBeDir = true,
+        mustBeReadable = true
+    )
+
+    private val storePath by argument(name = "storePath", help = "The store path of result").file(
+        mustExist = false,
+        canBeFile = false,
+        canBeDir = true,
+        mustBeWritable = true
+    )
+
+    private val mainRefname by option("-mr", help = "The branch ref of the git repository")
+
+    private val visitModel by option("-vm", help = "Switch visitor model and stats model").int().default(1)
+
+    override fun run() {
+        (LoggerFactory.getILoggerFactory() as LoggerContext).getLogger(Logger.ROOT_LOGGER_NAME).level = Level.INFO
+        Run.initGenerators()
+        visitRootFiles(rootPath, storePath.canonicalPath, visitModel, mainRefname)
+    }
+
 }
 
-private fun visitRootFiles(rootFile: File, storePath: String) {
+fun main(args: Array<String>) = CliParser().main(args)
+
+private fun  visitRootFiles(rootFile: File, storePath: String, visitModel: Int, mainRefName: String?) {
     val isGitRepo = checkGitRepo(rootFile)
     isGitRepo.ifFalse {
         val gitRepos = rootFile.listFiles(FileFilter { it.isDirectory && checkGitRepo(it) })
         gitRepos?.forEachIndexed { index, repo ->
             logger.info("Start git repo: ${repo.name}, at ${index + 1} of ${gitRepos.size}")
-            visitGitRepo(repo, storePath)
+            if (visitModel == 1) {
+                visitGitRepo(repo, storePath, mainRefName)
+            } else {
+                stats(repo, File(storePath))
+            }
         }
     }
     isGitRepo.ifTrue {
         logger.info("Start git repo: ${rootFile.name}, at 1 total 1")
-        visitGitRepo(rootFile, storePath)
+        if (visitModel == 1) {
+            visitGitRepo(rootFile, storePath, mainRefName)
+        } else {
+            stats(rootFile, File(storePath))
+        }
     }
 }
 
-private fun visitGitRepo(gitRepo: File, storePath: String) {
+private fun visitGitRepo(gitRepo: File, storePath: String, mainRefName: String?) {
     resultStorePath = "$storePath${File.separatorChar}${gitRepo.name}"
     var resultStoreFile = File(resultStorePath)
     if (!resultStoreFile.exists()) {
@@ -55,11 +94,8 @@ private fun visitGitRepo(gitRepo: File, storePath: String) {
         resultStoreFile.createNewFile()
     }
     val storeOutStream = FileOutputStream(resultStoreFile)
-    try {
-        GitProcessor.visitGitRepo(gitRepo.path, ::findAstDiff)
-    } catch (e: Exception) {
-        logger.error("Error", e)
-    }
+    val visitor = GitCommitsVisitor(gitRepo, mainRefName, ::findAstDiff)
+    visitor.visitGitRepo()
     storeOutStream.use {
         it.write(Gson().toJson(resultCollector).toByteArray())
         resultCollector.clear()
@@ -73,12 +109,10 @@ private fun checkGitRepo(file: File): Boolean {
 }
 
 private fun findAstDiff(
-    commitId: String, newFilePath: String, oldContent: String, newContent: String
+    commitId: String, newFilePath: String, oldContentReader: Reader, newContentReader: Reader
 ) {
     try {
         val treeGenerator = getTreeGenerator(newFilePath.split(".").last())
-        val newContentReader = StringReader(removeComments(newContent))
-        val oldContentReader = StringReader(removeComments(oldContent))
         val diff = Diff.compute(oldContentReader, newContentReader, treeGenerator, null, GumtreeProperties())
         val allNodesClassifier = diff.createAllNodeClassifier()
         val collector = ArrayList<String>()
@@ -105,7 +139,7 @@ private fun writeResult(commitId: String, filePath: String, collector: ArrayList
         count++
         if (count % 5 == 0) {
             val tempFile = File("${resultStorePath}_$count.json")
-            if (!tempFile.exists()){
+            if (!tempFile.exists()) {
                 tempFile.createNewFile()
             }
             val outputStream = FileOutputStream(tempFile)
