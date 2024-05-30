@@ -13,9 +13,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.gumtreediff:core:4.0.0-beta2-SNAPSHOT")
-    implementation("com.github.gumtreediff:client:4.0.0-beta2-SNAPSHOT")
-    implementation("com.github.gumtreediff:gen.treesitter-ng:4.0.0-beta2-SNAPSHOT")
+    implementation("com.github.gumtreediff:core:4.0.0-beta2")
+    implementation("com.github.gumtreediff:client:4.0.0-beta2")
+    implementation("com.github.gumtreediff:gen.treesitter-ng:4.0.0-beta2")
     implementation("org.reflections:reflections:0.10.2")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("ch.qos.logback:logback-classic:1.4.14")
