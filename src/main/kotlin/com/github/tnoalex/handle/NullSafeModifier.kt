@@ -2,7 +2,7 @@
 
 package com.github.tnoalex.handle
 
-import com.github.tnoalex.util.ifFalse
+import com.github.tnoalex.utils.ifFalse
 import com.github.gumtreediff.actions.TreeClassifier
 
 class AddNullSafeOperatorHandler : AbstractHandler() {

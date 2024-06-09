@@ -1,4 +1,4 @@
-package com.github.tnoalex.util
+package com.github.tnoalex.utils
 
 inline fun <T> Boolean.ifTrue(body: () -> T?): T? =
     if (this) body() else null
