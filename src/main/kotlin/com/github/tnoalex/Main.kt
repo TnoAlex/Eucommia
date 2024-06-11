@@ -44,7 +44,7 @@ class CliParser : CliktCommand(name = "eucommia") {
 
     private val commitDataPath by option(
         "-cdp",
-        help = "The csv of commit to extract the git patch,[commit id]"
+        help = "The csv of commit to extract the git patch,[commit id,file path]"
     ).file(
         mustExist = true,
         canBeFile = false,
@@ -89,13 +89,12 @@ private fun visitRootFiles(
                 commitDataPath?.let {
                     distillPath(
                         gitService,
-                        Paths.get(it.canonicalPath, "${gitService.repoName}.csv").toFile(),
-                        mainRefName
+                        Paths.get(it.canonicalPath, "${gitService.repoName}.csv").toFile()
                     )
                 }?.let {
-                    it.forEachIndexed { i, v ->
+                    it.forEach { (k, v) ->
                         FileService.write(
-                            Paths.get(storePath, gitService.repoName, "$i.patch").pathString,
+                            Paths.get(storePath, gitService.repoName, "$k.diff").pathString,
                             v.toByteArray()
                         )
                     }

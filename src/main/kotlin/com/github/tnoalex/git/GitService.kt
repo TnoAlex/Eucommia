@@ -73,7 +73,7 @@ class GitService(gitRepo: File) : AutoCloseable {
         val objectReader = repository.newObjectReader()
         objectReader.use { reader ->
             newTree.reset(reader, newCommit.tree.id)
-            oldTree.reset(reader, oldCommit.tree.id)
+            oldCommit.tree?.let { oldTree.reset(reader, it.id) } ?: return
 
             val diffs = git.diff()
                 .setNewTree(newTree)

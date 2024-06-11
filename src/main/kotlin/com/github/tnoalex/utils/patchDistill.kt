@@ -2,60 +2,55 @@ package com.github.tnoalex.utils
 
 import com.github.tnoalex.file.FileService
 import com.github.tnoalex.git.GitService
+import org.eclipse.jgit.diff.DiffEntry
 import org.eclipse.jgit.revwalk.RevCommit
+import org.eclipse.jgit.treewalk.filter.PathSuffixFilter
 import org.slf4j.LoggerFactory
-import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileNotFoundException
-import java.io.InputStreamReader
 
 
-fun distillPath(gitService: GitService, commitDatePath: File, mainRef: String?): ArrayList<String>? {
+fun distillPath(gitService: GitService, commitDatePath: File): HashMap<String, String>? {
     val commitData = getCommitData(commitDatePath) ?: return null
-    val collector = ArrayList<String>()
-    commitData.forEach {
-        val commit = gitService.parseCommit(it) ?: return@forEach
-        createGitPatch(commit, File(gitService.repoPath))?.let { res ->
-            collector.add(res)
+    val collector = HashMap<String, String>()
+    commitData.forEach { (k, v) ->
+        val commit = gitService.parseCommit(k) ?: return@forEach
+        createGitPatch(commit, gitService, v)?.let { res ->
+            collector[k.substring(0..7)] = res
         }
     }
     return collector
 }
 
-private fun getCommitData(commitDatePath: File): List<String>? {
+private fun getCommitData(commitDatePath: File): Map<String, String>? {
     try {
         val commitData = FileService.read(commitDatePath.canonicalPath)?.let { String(it) } ?: return null
-        return commitData.split(System.lineSeparator()).filter { it.isNotBlank() }
+        return commitData.split(System.lineSeparator()).filter { it.isNotBlank() }.map { it.split(",") }
+            .associate { it[0] to it[1] }
     } catch (e: FileNotFoundException) {
         return null
     }
 }
 
-private fun createGitPatch(commit: RevCommit, workDir: File): String? {
+private fun createGitPatch(commit: RevCommit, gitService: GitService, filePath: String): String? {
     if (commit.parentCount <= 0) return null
-    return invokeGit(commit.parents[0].id.name, commit.id.name(), workDir)
+    val outputStream = ByteArrayOutputStream()
+    val diffFormatter = gitService.getDiffFormatter(outputStream, 5)
+    val res = ArrayList<String>()
+    val oldCmit = gitService.parseCommit(commit.parents[0].id.name()) ?: return null
+    gitService.visitDiff(
+        oldCmit,
+        commit,
+        PathSuffixFilter.create(filePath),
+        listOf(DiffEntry.ChangeType.MODIFY)
+    ) { diffEntry, _ ->
+        diffFormatter.format(diffEntry)
+        res.add(outputStream.toString())
+        outputStream.reset()
+    }
+    return if (res.isNotEmpty()) res[0] else null
 }
 
-private fun invokeGit(formId: String, toId: String, workDir: File): String? {
-    val processBuilder = ProcessBuilder("git", "format-patch", "$formId..$toId", "--stdout")
-    processBuilder.directory(workDir)
-    return runCatching {
-        val process = processBuilder.start()
-        val reader = BufferedReader(InputStreamReader(process.inputStream))
-        val errReader = BufferedReader(InputStreamReader(process.errorStream))
-        val sb = StringBuilder()
-        reader.lines().forEach {
-            sb.append(it).append("\n")
-        }
-        if (process.waitFor() != 0) {
-            val esb = StringBuilder()
-            errReader.lines().forEach {
-                esb.append(it).append("\n")
-            }
-            logger.error("An error was encountered while processing  ${workDir.canonicalPath}\n err info: $esb")
-        }
-        sb.toString()
-    }.getOrNull()
-}
 
 private val logger = LoggerFactory.getLogger("com.github.tnoalex.utils.patchDistill")
