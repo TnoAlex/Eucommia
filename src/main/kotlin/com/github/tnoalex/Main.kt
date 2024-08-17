@@ -93,10 +93,12 @@ private fun visitRootFiles(
                     )
                 }?.let {
                     it.forEach { (k, v) ->
-                        FileService.write(
-                            Paths.get(storePath, gitService.repoName, "$k.diff").pathString,
-                            v.toByteArray()
-                        )
+                        v.forEachIndexed { index, item ->
+                            FileService.write(
+                                Paths.get(storePath, gitService.repoName, k + "_$index.diff").pathString,
+                                item.toByteArray()
+                            )
+                        }
                     }
                 }
             }

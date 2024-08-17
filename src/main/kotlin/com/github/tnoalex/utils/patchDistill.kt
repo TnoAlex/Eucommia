@@ -11,23 +11,28 @@ import java.io.File
 import java.io.FileNotFoundException
 
 
-fun distillPath(gitService: GitService, commitDatePath: File): HashMap<String, String>? {
+fun distillPath(gitService: GitService, commitDatePath: File): HashMap<String, ArrayList<String>>? {
     val commitData = getCommitData(commitDatePath) ?: return null
-    val collector = HashMap<String, String>()
+    val collector = HashMap<String, ArrayList<String>>()
     commitData.forEach { (k, v) ->
-        val commit = gitService.parseCommit(k) ?: return@forEach
-        createGitPatch(commit, gitService, v)?.let { res ->
-            collector[k.substring(0..7)] = res
+        v.forEach innerLoop@{ i ->
+            val commit = gitService.parseCommit(k) ?: return@forEach
+            createGitPatch(commit, gitService, i)?.let { res ->
+                collector.getOrPut(k.substring(0..7)) { ArrayList() }.add(res)
+            }
         }
     }
     return collector
 }
 
-private fun getCommitData(commitDatePath: File): Map<String, String>? {
+private fun getCommitData(commitDatePath: File): HashMap<String, ArrayList<String>>? {
     try {
         val commitData = FileService.read(commitDatePath.canonicalPath)?.let { String(it) } ?: return null
-        return commitData.split(System.lineSeparator()).filter { it.isNotBlank() }.map { it.split(",") }
-            .associate { it[0] to it[1] }
+        val res = HashMap<String, ArrayList<String>>()
+        commitData.split(System.lineSeparator()).filter { it.isNotBlank() }.map { it.split(",") }.forEach {
+            res.getOrPut(it[0]) { ArrayList() }.add(it[1])
+        }
+        return res
     } catch (e: FileNotFoundException) {
         return null
     }
