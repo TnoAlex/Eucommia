@@ -1,8 +1,10 @@
-package com.github.tnoalex.handle
+package com.github.tnoalex.handle.impl
 
 import com.github.gumtreediff.actions.TreeClassifier
+import com.github.tnoalex.ConstructByReflection
+import com.github.tnoalex.handle.AbstractHandler
 
-@Suppress("unused")
+@ConstructByReflection
 class ExceptionMarkHandler : AbstractHandler() {
     override val handleName: String
         get() = "exception_mark"

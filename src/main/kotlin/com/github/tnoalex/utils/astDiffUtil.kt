@@ -28,13 +28,16 @@ fun excavateAstDiff(gitService: GitService, mainRef: String?): String {
             val oldLoader = reader.open(diff.oldId.toObjectId())
             val newContentReader = InputStreamReader(newLoader.openStream())
             val oldContentReader = InputStreamReader(oldLoader.openStream())
-            collector.add(
-                AstDiff(
-                    revCommit.id.name,
-                    diff.newPath,
-                    findAstDiff(diff.newPath, oldContentReader, newContentReader)
+            val astDiff = findAstDiff(diff.newPath, oldContentReader, newContentReader)
+            if (astDiff.isNotEmpty()) {
+                collector.add(
+                    AstDiff(
+                        revCommit.id.name,
+                        diff.newPath,
+                        astDiff
+                    )
                 )
-            )
+            }
         }
     }
     return writeResult(collector)

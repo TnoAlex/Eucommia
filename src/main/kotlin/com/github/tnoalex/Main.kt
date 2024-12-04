@@ -60,7 +60,7 @@ class CliParser : CliktCommand(name = "eucommia") {
 
 }
 
-fun main(args: Array<String>) = CliParser().main(args)
+fun main(args: Array<String>): Unit = CliParser().main(args)
 
 private fun visitRootFiles(
     rootFile: File,
