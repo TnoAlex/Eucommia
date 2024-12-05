@@ -24,6 +24,7 @@ fun excavateAstDiff(
     collector: (AstDiff) -> Unit
 ) {
     gitService.visitCommit(mainRef, RevFilter.NO_MERGES) { revCommit ->
+        logger.info { "processing commit: ${revCommit.id.name}" }
         if (!commitFilter(revCommit)) {
             logger.info { "${revCommit.id.name} exists" }
             return@visitCommit

@@ -10,8 +10,10 @@ class AddNullAssertionOperatorHandler : AbstractHandler() {
         get() = "add_null_assertion_operator"
 
     override fun attracted(tree: TreeClassifier): Boolean {
-        return tree.insertedDsts.any {
+        val inserted = tree.insertedDsts
+        val node = inserted.firstOrNull {
             it.type.name == "non-null_assertion_operator"
         }
+        return node != null && node.parent !in inserted
     }
 }

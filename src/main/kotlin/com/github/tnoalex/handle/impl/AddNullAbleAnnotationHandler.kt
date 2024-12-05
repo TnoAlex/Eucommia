@@ -10,8 +10,10 @@ class AddNullAbleAnnotationHandler : AbstractHandler() {
         get() = "add_null_able_annotation"
 
     override fun attracted(tree: TreeClassifier): Boolean {
-        return tree.insertedDsts.any {
+        val inserted = tree.insertedDsts
+        val node = inserted.firstOrNull {
             it.type.name == "marker_annotation" && it.children.find { c -> c.label == "Nullable" } != null
         }
+        return node != null && node.parent !in inserted
     }
 }

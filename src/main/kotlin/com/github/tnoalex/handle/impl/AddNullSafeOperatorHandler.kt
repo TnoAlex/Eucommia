@@ -10,8 +10,10 @@ class AddNullSafeOperatorHandler : AbstractHandler() {
         get() = "add_null_safe_operator"
 
     override fun attracted(tree: TreeClassifier): Boolean {
-        return tree.insertedDsts.any {
+        val inserted = tree.insertedDsts
+        val node = inserted.firstOrNull {
             it.type.name == "null_safe_call_operator"
         }
+        return node != null && node.parent !in inserted
     }
 }

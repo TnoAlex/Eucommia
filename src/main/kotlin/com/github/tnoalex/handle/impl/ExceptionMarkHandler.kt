@@ -10,10 +10,12 @@ class ExceptionMarkHandler : AbstractHandler() {
         get() = "exception_mark"
 
     override fun attracted(tree: TreeClassifier): Boolean {
-        return tree.insertedDsts.any {
+        val inserted = tree.insertedDsts
+        val node = inserted.firstOrNull {
             it.type.name == "class_modifier" &&
                     it.children.any { c -> c.label == "@" }&&
                     it.children.any { c -> c.label == "Throws" }
         }
+        return node != null && node.parent !in inserted
     }
 }

@@ -10,9 +10,11 @@ class AddNotNullAnnotationHandler : AbstractHandler() {
         get() = "add_not_null_annotation"
 
     override fun attracted(tree: TreeClassifier): Boolean {
-        return tree.insertedDsts.any {
+        val inserted = tree.insertedDsts
+        val node = inserted.firstOrNull {
             it.type.name == "marker_annotation" &&
                     it.children.find { c -> c.label == "NotNull" || c.label == "NonNull" } != null
         }
+        return node != null && node.parent !in inserted
     }
 }
