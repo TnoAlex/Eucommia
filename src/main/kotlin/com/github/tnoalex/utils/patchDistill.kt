@@ -27,7 +27,7 @@ fun distillPath(gitService: GitService, commitDatePath: File): HashMap<String, A
 
 private fun getCommitData(commitDatePath: File): HashMap<String, ArrayList<String>>? {
     try {
-        val commitData = FileService.read(commitDatePath.canonicalPath)?.let { String(it) } ?: return null
+        val commitData = FileService.readAllBytes(commitDatePath.canonicalPath)?.let { String(it) } ?: return null
         val res = HashMap<String, ArrayList<String>>()
         commitData.split(System.lineSeparator()).filter { it.isNotBlank() }.map { it.split(",") }.forEach {
             res.getOrPut(it[0]) { ArrayList() }.add(it[1])

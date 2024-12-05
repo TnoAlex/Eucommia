@@ -5,7 +5,9 @@ import com.github.gumtreediff.matchers.GumtreeProperties
 import com.github.tnoalex.git.GitService
 import com.github.tnoalex.handle.getAllHandle
 import com.google.gson.Gson
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.eclipse.jgit.diff.DiffEntry
+import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.revwalk.filter.RevFilter
 import org.eclipse.jgit.treewalk.filter.OrTreeFilter
 import org.eclipse.jgit.treewalk.filter.PathSuffixFilter
@@ -13,12 +15,21 @@ import java.io.InputStreamReader
 import java.io.Reader
 
 private val handles = getAllHandle()
+private val logger = KotlinLogging.logger {}
 private val OR_PATH_FILTER =
     OrTreeFilter.create(listOf(PathSuffixFilter.create(".kt"), PathSuffixFilter.create(".java")))
 
-fun excavateAstDiff(gitService: GitService, mainRef: String?): String {
-    val collector = ArrayList<AstDiff>()
+fun excavateAstDiff(
+    gitService: GitService, mainRef: String?, commitFilter: (RevCommit) -> Boolean,
+    collector: (AstDiff) -> Unit
+) {
     gitService.visitCommit(mainRef, RevFilter.NO_MERGES) { revCommit ->
+        if (!commitFilter(revCommit)) {
+            logger.info { "${revCommit.id.name} exists" }
+            return@visitCommit
+        }
+        val filePaths = arrayListOf<String>()
+        val astDiffs = HashSet<String>()
         gitService.visitDiffWithParent(
             revCommit,
             OR_PATH_FILTER,
@@ -30,17 +41,14 @@ fun excavateAstDiff(gitService: GitService, mainRef: String?): String {
             val oldContentReader = InputStreamReader(oldLoader.openStream())
             val astDiff = findAstDiff(diff.newPath, oldContentReader, newContentReader)
             if (astDiff.isNotEmpty()) {
-                collector.add(
-                    AstDiff(
-                        revCommit.id.name,
-                        diff.newPath,
-                        astDiff
-                    )
-                )
+                filePaths.add(diff.newPath)
+                astDiffs.addAll(astDiff)
             }
         }
+        if (filePaths.isNotEmpty()) {
+            collector(AstDiff(revCommit.id.name, filePaths, astDiffs.toList()))
+        }
     }
-    return writeResult(collector)
 }
 
 private fun findAstDiff(

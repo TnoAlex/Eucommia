@@ -13,6 +13,7 @@ repositories {
 }
 
 dependencies {
+    implementation("io.github.oshai:kotlin-logging-jvm:7.0.0")
     implementation("com.github.gumtreediff:core:4.0.0-beta2")
     implementation("com.github.gumtreediff:client:4.0.0-beta2")
     implementation("com.github.gumtreediff:gen.treesitter-ng:4.0.0-beta2")

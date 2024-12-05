@@ -14,16 +14,16 @@ import com.github.tnoalex.git.GitManager
 import com.github.tnoalex.utils.distillPath
 import com.github.tnoalex.utils.excavateAstDiff
 import com.github.tnoalex.utils.statsCommit
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 
-private val logger = LoggerFactory.getLogger("Eucommia")
+private val logger = KotlinLogging.logger("Eucommia")
 
-
-class CliParser : CliktCommand(name = "eucommia") {
+class CliParser: CliktCommand(name = "eucommia") {
     private val rootPath by argument(name = "rootPath", help = "The root path of git repositories").file(
         mustExist = true,
         canBeFile = false,
@@ -72,16 +72,22 @@ private fun visitRootFiles(
     GitManager.createGitServices(rootFile) { gitService ->
         when (visitModel) {
             0 -> {
-                excavateAstDiff(gitService, mainRefName).also {
-                    FileService.write(Paths.get(storePath, gitService.repoName, ".json").pathString, it.toByteArray())
-                    logger.info("${gitService.repoName} done")
+                val resultPath = Paths.get(storePath, gitService.repoName, ".csv").pathString
+                val lastRun = FileService.readLines(resultPath) ?: emptyList()
+                val diffs = lastRun.map { it.split(",")[0] }.toSet()
+
+                excavateAstDiff(gitService, mainRefName, {
+                    !diffs.contains(it.id.name)
+                }) { astDiff ->
+                    FileService.writeAppend(resultPath, astDiff.simpleToString())
+                    logger.info { "${astDiff.commitId} done" }
                 }
             }
 
             1 -> {
                 statsCommit(gitService, mainRefName).also {
                     FileService.write(Paths.get(storePath, gitService.repoName, ".csv").pathString, it.toByteArray())
-                    logger.info("${gitService.repoName} done")
+                    logger.info { "${gitService.repoName} done" }
                 }
             }
 
