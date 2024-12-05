@@ -72,12 +72,16 @@ private fun visitRootFiles(
     GitManager.createGitServices(rootFile) { gitService ->
         when (visitModel) {
             0 -> {
-                val resultPath = Paths.get(storePath, gitService.repoName, ".csv").pathString
-                val lastRun = FileService.readLines(resultPath) ?: emptyList()
-                val diffs = lastRun.map { it.split(",")[0] }.toSet()
+                val resultPath = Paths.get(storePath, "${gitService.repoName}.csv").pathString
+                val finishedPath = Paths.get(storePath, "${gitService.repoName}-finished.csv").pathString
+                val finished = FileService.readLines(finishedPath)?.toSet() ?: emptySet()
 
                 excavateAstDiff(gitService, mainRefName, {
-                    !diffs.contains(it.id.name)
+                    if (finished.contains(it.id.name)) {
+                        return@excavateAstDiff false
+                    }
+                    FileService.writeAppend(finishedPath, it.id.name)
+                    true
                 }) { astDiff ->
                     FileService.writeAppend(resultPath, astDiff.simpleToString())
                     logger.info { "${astDiff.commitId} done" }
