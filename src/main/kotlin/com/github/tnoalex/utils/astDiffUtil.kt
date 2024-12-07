@@ -18,6 +18,23 @@ private val logger = KotlinLogging.logger {}
 private val OR_PATH_FILTER =
     OrTreeFilter.create(listOf(PathSuffixFilter.create(".kt"), PathSuffixFilter.create(".java")))
 
+private fun shortenFilePaths(paths: List<String>): List<String> {
+    val shortenedPathsMap = HashMap<String, ArrayList<String>>()
+    for (path in paths) {
+        val shorten = path.split("/").last()
+        shortenedPathsMap.getOrPut(shorten) { ArrayList() }.add(path)
+    }
+    val result = ArrayList<String>()
+    for ((shortenPath, originalPaths) in shortenedPathsMap) {
+        if (originalPaths.size > 1) {
+            result.addAll(originalPaths)
+        } else {
+            result.add(shortenPath)
+        }
+    }
+    return result
+}
+
 fun excavateAstDiff(
     gitService: GitService, mainRef: String?, commitFilter: (RevCommit) -> Boolean,
     collector: (AstDiff) -> Unit
@@ -51,7 +68,7 @@ fun excavateAstDiff(
             }
         }
         if (filePaths.isNotEmpty()) {
-            collector(AstDiff(revCommit.id.name, filePaths, astDiffs.toList()))
+            collector(AstDiff(revCommit.id.name, shortenFilePaths(filePaths), astDiffs.toList()))
         }
     }
 }
