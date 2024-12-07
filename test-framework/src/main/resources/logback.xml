@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="true" scan="true" scanPeriod="1 seconds">
+
+    <contextName>logback</contextName>
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>TRACE</level>
+        </filter>
+        <encoder>
+            <pattern>%d [%thread] %-5level %logger{12} [%file:%line] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="trace">
+        <appender-ref ref="stdout"/>
+    </root>
+
+    <logger name="com.github.tnoalex.handle" level="trace"/>
+    <logger name="ch.qos.logback.classic" level="error" additivity="false" ref="stdout"/>
+</configuration>

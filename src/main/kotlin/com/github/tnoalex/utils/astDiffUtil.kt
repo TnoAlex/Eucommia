@@ -3,7 +3,7 @@ package com.github.tnoalex.utils
 import com.github.gumtreediff.actions.Diff
 import com.github.gumtreediff.matchers.GumtreeProperties
 import com.github.tnoalex.git.GitService
-import com.github.tnoalex.handle.getAllHandle
+import com.github.tnoalex.handle.AbstractHandler
 import com.google.gson.Gson
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.eclipse.jgit.diff.DiffEntry
@@ -14,7 +14,6 @@ import org.eclipse.jgit.treewalk.filter.PathSuffixFilter
 import java.io.InputStreamReader
 import java.io.Reader
 
-private val handles = getAllHandle()
 private val logger = KotlinLogging.logger {}
 private val OR_PATH_FILTER =
     OrTreeFilter.create(listOf(PathSuffixFilter.create(".kt"), PathSuffixFilter.create(".java")))
@@ -40,7 +39,12 @@ fun excavateAstDiff(
             val oldLoader = reader.open(diff.oldId.toObjectId())
             val newContentReader = InputStreamReader(newLoader.openStream())
             val oldContentReader = InputStreamReader(oldLoader.openStream())
-            val astDiff = findAstDiff(diff.newPath, oldContentReader, newContentReader)
+            val astDiff = try {
+                findAstDiff(diff.newPath, oldContentReader, newContentReader)
+            } catch (e: Exception) {
+                logger.error { e.stackTraceToString() }
+                emptyList()
+            }
             if (astDiff.isNotEmpty()) {
                 filePaths.add(diff.newPath)
                 astDiffs.addAll(astDiff)
@@ -52,7 +56,7 @@ fun excavateAstDiff(
     }
 }
 
-private fun findAstDiff(
+fun findAstDiff(
     newFilePath: String,
     oldContentReader: Reader,
     newContentReader: Reader
@@ -61,11 +65,11 @@ private fun findAstDiff(
     val diff = Diff.compute(oldContentReader, newContentReader, treeGenerator, null, GumtreeProperties())
     val allNodesClassifier = diff.createAllNodeClassifier()
     val collector = ArrayList<String>()
-    handles.handle(allNodesClassifier, collector)
+    AbstractHandler.handle(allNodesClassifier, collector)
     return collector
 }
 
-private fun getTreeGenerator(fileExtensions: String): String {
+fun getTreeGenerator(fileExtensions: String): String {
     return when (fileExtensions) {
         "java" -> "java-treesitter-ng"
         "kt" -> "kotlin-treesitter-ng"

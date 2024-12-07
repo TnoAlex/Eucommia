@@ -22,7 +22,8 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.4.14")
     implementation("com.github.ajalt.clikt:clikt:4.2.2")
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
-    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.1")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
 }
 
 tasks.test {

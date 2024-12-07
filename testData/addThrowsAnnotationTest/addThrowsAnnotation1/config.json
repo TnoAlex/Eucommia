@@ -1,0 +1,7 @@
+{
+  "newName": "test.kt",
+  "oldName": "test_old.kt",
+  "result": [
+    "exception_mark"
+  ]
+}

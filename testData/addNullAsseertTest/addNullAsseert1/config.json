@@ -1,0 +1,7 @@
+{
+  "newName": "test.kt",
+  "oldName": "test_old.kt",
+  "result": [
+    "add_null_assertion_operator"
+  ]
+}

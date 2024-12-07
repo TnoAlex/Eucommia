@@ -14,6 +14,8 @@ class AddNullAssertionOperatorHandler : AbstractHandler() {
         val node = inserted.firstOrNull {
             it.type.name == "non-null_assertion_operator"
         }
-        return node != null && node.parent !in inserted
+        // non-null assertion will change the expressions type, so a postfix expression is also inserted here.
+        // So we use node.parent?.parent here.
+        return node != null && node.parent?.parent !in inserted
     }
 }

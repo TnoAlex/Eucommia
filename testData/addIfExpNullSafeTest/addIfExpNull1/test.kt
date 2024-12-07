@@ -1,7 +1,7 @@
-class Test{
-    fun inTest(){
+class Test {
+    fun inTest() {
         val jValue = JavaClass.jFunc()
-        if(jValue != null){
+        if (jValue != null) {
             jValue.value
         }
     }
