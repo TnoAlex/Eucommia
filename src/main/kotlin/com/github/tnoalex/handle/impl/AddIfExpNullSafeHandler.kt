@@ -13,9 +13,10 @@ class AddIfExpNullSafeHandler : AbstractHandler() {
     override fun attracted(tree: TreeClassifier): Boolean {
         val inserted = tree.insertedDsts
         val node =  inserted.firstOrNull {
-            val condition = it.children.firstOrNull { c -> c.type.name == "equality_expression" } ?: return false
-            condition.children.any { c -> c.label == "!=" }.ifFalse { return false }
-            condition.children.any { c -> c.type.name == "null" }.ifFalse { return false }
+            val condition = it.children.firstOrNull { c -> c.type.name == "equality_expression" }
+                ?: return@firstOrNull false
+            condition.children.any { c -> c.label == "!=" }.ifFalse { return@firstOrNull false }
+            condition.children.any { c -> c.type.name == "null" }.ifFalse { return@firstOrNull false }
             true
         }
         return node != null && node.parent !in inserted
