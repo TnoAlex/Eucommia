@@ -13,7 +13,8 @@ class NonNull2NullableHandler: AbstractHandler() {
         val inserted = tree.insertedDsts
         val node = inserted.firstOrNull {
             it.type.name == "nullable_type"
+                    && it.parent !in inserted
         }
-        return node != null && node.parent !in inserted
+        return node != null
     }
 }

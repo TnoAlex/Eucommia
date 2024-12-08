@@ -13,7 +13,8 @@ class AddNullAbleAnnotationHandler : AbstractHandler() {
         val inserted = tree.insertedDsts
         val node = inserted.firstOrNull {
             it.type.name == "marker_annotation" && it.children.find { c -> c.label == "Nullable" } != null
+                    && it.parent !in inserted
         }
-        return node != null && node.parent !in inserted
+        return node != null
     }
 }

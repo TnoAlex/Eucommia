@@ -5,7 +5,7 @@ import com.github.tnoalex.ConstructByReflection
 import com.github.tnoalex.handle.AbstractHandler
 
 @ConstructByReflection
-class AddNullAssertionOperatorHandler : AbstractHandler() {
+class AddNullAssertionOperatorHandler: AbstractHandler() {
     override val handleName: String
         get() = "add_null_assertion_operator"
 
@@ -13,9 +13,11 @@ class AddNullAssertionOperatorHandler : AbstractHandler() {
         val inserted = tree.insertedDsts
         val node = inserted.firstOrNull {
             it.type.name == "non-null_assertion_operator"
+                    // non-null assertion will change the expressions type, so a postfix expression is also inserted here.
+                    // So we use node.parent?.parent here.
+                    && it.parent?.parent !in inserted
         }
-        // non-null assertion will change the expressions type, so a postfix expression is also inserted here.
-        // So we use node.parent?.parent here.
-        return node != null && node.parent?.parent !in inserted
+
+        return node != null
     }
 }

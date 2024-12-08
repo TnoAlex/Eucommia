@@ -30,6 +30,16 @@ class HandlerTest : BaseHandlerTest() {
             )
         }
     
+        @Test
+        fun test_addIfExpNull2() {
+            doValidate(
+                """testData\addIfExpNullSafeTest\addIfExpNull2""",
+                """new.kt""",
+                """old.kt""",
+                listOf<String>("add_if_exp_for_null_safe")
+            )
+        }
+    
     
     }
         

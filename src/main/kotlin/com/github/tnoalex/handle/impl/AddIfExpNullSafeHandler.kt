@@ -17,8 +17,8 @@ class AddIfExpNullSafeHandler : AbstractHandler() {
                 ?: return@firstOrNull false
             condition.children.any { c -> c.label == "!=" }.ifFalse { return@firstOrNull false }
             condition.children.any { c -> c.type.name == "null" }.ifFalse { return@firstOrNull false }
-            true
+            it.parent !in inserted
         }
-        return node != null && node.parent !in inserted
+        return node != null
     }
 }

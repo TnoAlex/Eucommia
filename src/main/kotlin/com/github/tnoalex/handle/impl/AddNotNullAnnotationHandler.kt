@@ -14,7 +14,8 @@ class AddNotNullAnnotationHandler : AbstractHandler() {
         val node = inserted.firstOrNull {
             it.type.name == "marker_annotation" &&
                     it.children.find { c -> c.label == "NotNull" || c.label == "NonNull" } != null
+                    && it.parent !in inserted
         }
-        return node != null && node.parent !in inserted
+        return node != null
     }
 }

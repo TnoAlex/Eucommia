@@ -13,11 +13,9 @@ class ExceptionMarkHandler: AbstractHandler() {
         val inserted = tree.insertedDsts
         val modifierNode = inserted.firstOrNull {
             it.type.name == "class_modifier"
+                    && it.parent?.parent !in inserted
+                    && it.descendants.any { it1 -> it1.label == "Throws" }
         }
-        val throwsNode = inserted.firstOrNull {
-            it.label == "Throws"
-        }
-        return throwsNode != null && modifierNode != null && modifierNode.parent?.parent !in inserted
-                && throwsNode in modifierNode.descendants
+        return modifierNode != null
     }
 }

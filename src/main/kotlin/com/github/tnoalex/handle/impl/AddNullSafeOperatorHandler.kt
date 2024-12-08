@@ -5,7 +5,7 @@ import com.github.tnoalex.ConstructByReflection
 import com.github.tnoalex.handle.AbstractHandler
 
 @ConstructByReflection
-class AddNullSafeOperatorHandler : AbstractHandler() {
+class AddNullSafeOperatorHandler: AbstractHandler() {
     override val handleName: String
         get() = "add_null_safe_operator"
 
@@ -13,7 +13,8 @@ class AddNullSafeOperatorHandler : AbstractHandler() {
         val inserted = tree.insertedDsts
         val node = inserted.firstOrNull {
             it.type.name == "null_safe_call_operator"
+                    && it.parent !in inserted
         }
-        return node != null && node.parent !in inserted
+        return node != null
     }
 }

@@ -1,0 +1,7 @@
+{
+  "newName": "new.kt",
+  "oldName": "old.kt",
+  "result": [
+    "add_if_exp_for_null_safe"
+  ]
+}
