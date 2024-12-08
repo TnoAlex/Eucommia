@@ -1,0 +1,7 @@
+{
+  "newName": "new.kt",
+  "oldName": "old.kt",
+  "result": [
+    "non_null_2_nullable", "add_null_safe_operator"
+  ]
+}

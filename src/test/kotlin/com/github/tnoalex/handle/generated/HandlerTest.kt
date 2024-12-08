@@ -107,5 +107,30 @@ class HandlerTest : BaseHandlerTest() {
     
     
     }
+        
+    @Nested
+    inner class NonNull2NullableTest {
+        @Test
+        fun test_NonNull2Nullable1() {
+            doValidate(
+                """testData\NonNull2Nullable\NonNull2Nullable1""",
+                """new.kt""",
+                """old.kt""",
+                listOf<String>("non_null_2_nullable")
+            )
+        }
+    
+        @Test
+        fun test_NonNull2Nullable2() {
+            doValidate(
+                """testData\NonNull2Nullable\NonNull2Nullable2""",
+                """new.kt""",
+                """old.kt""",
+                listOf<String>("non_null_2_nullable", "add_null_safe_operator")
+            )
+        }
+    
+    
+    }
     
 }
