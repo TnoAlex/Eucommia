@@ -1,5 +1,6 @@
 package com.github.tnoalex.git
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.LogCommand
 import org.eclipse.jgit.diff.DiffEntry
@@ -17,6 +18,7 @@ import java.io.File
 import java.io.OutputStream
 
 class GitService(gitRepo: File) : AutoCloseable {
+    private val logger = KotlinLogging.logger {}
     private val git = Git.open(gitRepo)
     private val repository = git.repository
     val repoName: String = gitRepo.name
@@ -55,10 +57,11 @@ class GitService(gitRepo: File) : AutoCloseable {
         commit: RevCommit,
         pathFilter: TreeFilter?,
         typeFilters: List<DiffEntry.ChangeType>,
+        diffsFilter: (List<DiffEntry>) -> Boolean = { _ -> true },
         diffCallBack: (DiffEntry, ObjectReader) -> Unit
     ) {
         if (commit.parentCount <= 0) return
-        visitDiff(commit.getParent(0), commit, pathFilter, typeFilters, diffCallBack)
+        visitDiff(commit.getParent(0), commit, pathFilter, typeFilters, diffsFilter, diffCallBack)
     }
 
     fun visitDiff(
@@ -66,6 +69,7 @@ class GitService(gitRepo: File) : AutoCloseable {
         newCommit: RevCommit,
         pathFilter: TreeFilter?,
         typeFilters: List<DiffEntry.ChangeType>,
+        diffsFilter: (List<DiffEntry>) -> Boolean = { _ -> true },
         diffCallBack: (DiffEntry, ObjectReader) -> Unit
     ) {
         val newTree = CanonicalTreeParser()
@@ -82,8 +86,12 @@ class GitService(gitRepo: File) : AutoCloseable {
                 .call()
                 .filter { it.changeType in typeFilters }
 
-            diffs.forEach { diff ->
-                diffCallBack(diff, reader)
+            if (diffsFilter(diffs)) {
+                diffs.forEach { diff ->
+                    diffCallBack(diff, reader)
+                }
+            } else {
+                logger.info { "ignore ${newCommit.id.name}" }
             }
         }
     }

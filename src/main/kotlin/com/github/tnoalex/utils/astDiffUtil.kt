@@ -37,7 +37,7 @@ private fun shortenFilePaths(paths: List<String>): List<String> {
 
 fun excavateAstDiff(
     gitService: GitService, mainRef: String?, commitFilter: (RevCommit) -> Boolean,
-    collector: (AstDiff) -> Unit
+    diffsFilter: (List<DiffEntry>) -> Boolean = { _ -> true }, collector: (AstDiff) -> Unit,
 ) {
     gitService.visitCommit(mainRef, RevFilter.NO_MERGES) { revCommit ->
         logger.info { "processing commit: ${revCommit.id.name}" }
@@ -50,7 +50,8 @@ fun excavateAstDiff(
         gitService.visitDiffWithParent(
             revCommit,
             OR_PATH_FILTER,
-            listOf(DiffEntry.ChangeType.MODIFY)
+            listOf(DiffEntry.ChangeType.MODIFY),
+            diffsFilter
         ) { diff, reader ->
             val newLoader = reader.open(diff.newId.toObjectId())
             val oldLoader = reader.open(diff.oldId.toObjectId())

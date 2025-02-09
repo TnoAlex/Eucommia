@@ -17,7 +17,6 @@ import com.github.tnoalex.utils.statsCommit
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.File
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 
@@ -52,66 +51,76 @@ class CliParser: CliktCommand(name = "eucommia") {
         mustBeReadable = true
     )
 
+    private val maxDiffFileNumber by option(
+        "-mdf",
+        help = "Max number of changed files in a commit"
+    ).int().default(Int.MAX_VALUE)
+
     override fun run() {
         (LoggerFactory.getILoggerFactory() as LoggerContext).getLogger(Logger.ROOT_LOGGER_NAME).level = Level.INFO
         Run.initGenerators()
-        visitRootFiles(rootPath, storePath.canonicalPath, visitModel, mainRefname, commitDataPath)
+        visitRootFiles()
     }
 
-}
+    private fun visitRootFiles() {
+        GitManager.createGitServices(rootPath) { gitService ->
+            val storeFullPath = storePath.canonicalPath
+            val repoName = gitService.repoName
+            when (visitModel) {
+                0 -> {
+                    val resultPath = Paths.get(storeFullPath, "$repoName.csv").pathString
+                    val finishedPath =
+                        Paths.get(storeFullPath, "$repoName-finished.csv").pathString
+                    val finished = FileService.readLines(finishedPath)?.toSet() ?: emptySet()
 
-fun main(args: Array<String>): Unit = CliParser().main(args)
-
-private fun visitRootFiles(
-    rootFile: File,
-    storePath: String,
-    visitModel: Int,
-    mainRefName: String?,
-    commitDataPath: File?
-) {
-    GitManager.createGitServices(rootFile) { gitService ->
-        when (visitModel) {
-            0 -> {
-                val resultPath = Paths.get(storePath, "${gitService.repoName}.csv").pathString
-                val finishedPath = Paths.get(storePath, "${gitService.repoName}-finished.csv").pathString
-                val finished = FileService.readLines(finishedPath)?.toSet() ?: emptySet()
-
-                excavateAstDiff(gitService, mainRefName, {
-                    if (finished.contains(it.id.name)) {
-                        return@excavateAstDiff false
+                    excavateAstDiff(gitService, mainRefname, {
+                        if (finished.contains(it.id.name)) {
+                            return@excavateAstDiff false
+                        }
+                        FileService.writeAppend(finishedPath, it.id.name)
+                        true
+                    }, { it.size <= maxDiffFileNumber }) { astDiff ->
+                        FileService.writeAppend(resultPath, astDiff.simpleToString())
+                        logger.info { "${astDiff.commitId} done" }
                     }
-                    FileService.writeAppend(finishedPath, it.id.name)
-                    true
-                }) { astDiff ->
-                    FileService.writeAppend(resultPath, astDiff.simpleToString())
-                    logger.info { "${astDiff.commitId} done" }
                 }
-            }
 
-            1 -> {
-                statsCommit(gitService, mainRefName).also {
-                    FileService.write(Paths.get(storePath, gitService.repoName, ".csv").pathString, it.toByteArray())
-                    logger.info { "${gitService.repoName} done" }
+                1 -> {
+                    statsCommit(gitService, mainRefname).also {
+                        FileService.write(
+                            Paths.get(storeFullPath, repoName, ".csv").pathString,
+                            it.toByteArray()
+                        )
+                        logger.info { "$repoName done" }
+                    }
                 }
-            }
 
-            2 -> {
-                commitDataPath?.let {
-                    distillPath(
-                        gitService,
-                        Paths.get(it.canonicalPath, "${gitService.repoName}.csv").toFile()
-                    )
-                }?.let {
-                    it.forEach { (k, v) ->
-                        v.forEachIndexed { index, item ->
-                            FileService.write(
-                                Paths.get(storePath, gitService.repoName, k + "_$index.diff").pathString,
-                                item.toByteArray()
-                            )
+                2 -> {
+                    commitDataPath?.let {
+                        distillPath(
+                            gitService,
+                            Paths.get(it.canonicalPath, "$repoName.csv").toFile()
+                        )
+                    }?.let {
+                        it.forEach { (k, v) ->
+                            v.forEachIndexed { index, item ->
+                                FileService.write(
+                                    Paths.get(
+                                        storeFullPath,
+                                        repoName,
+                                        k + "_$index.diff"
+                                    ).pathString,
+                                    item.toByteArray()
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+
 }
+
+fun main(args: Array<String>): Unit = CliParser().main(args)
+
