@@ -13,6 +13,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.0")
     implementation("com.github.gumtreediff:core:4.0.0-beta2")
     implementation("com.github.gumtreediff:client:4.0.0-beta2")

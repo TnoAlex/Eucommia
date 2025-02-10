@@ -1,6 +1,8 @@
 package com.github.tnoalex.git
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.LogCommand
 import org.eclipse.jgit.diff.DiffEntry
@@ -39,9 +41,26 @@ class GitService(gitRepo: File) : AutoCloseable {
         }
     }
 
+    suspend fun visitCommitAsync(ref: String?, filter: RevFilter, commitChannel: Channel<RevCommit>) {
+        val visitRef = getRef(ref)
+        RevWalk(repository).use { walk ->
+            val startCommit = walk.parseCommit(visitRef.objectId)
+            walk.markStart(startCommit)
+            walk.revFilter = filter
+            for (it in walk) {
+                commitChannel.send(it)
+                logger.trace { "send commit: ${it.id.name} to channel" }
+            }
+        }
+        commitChannel.close()
+    }
+
     private fun getRef(ref: String?): Ref {
-        return ref?.let { repository.findRef(ref) } ?: repository.refDatabase.refs.first()
-        ?: throw RuntimeException("Can not find ref $ref")
+        return ref?.let { repository.findRef(ref) }
+            ?: repository.findRef("master")
+            ?: repository.findRef("main")
+            ?: repository.refDatabase.refs.first()
+            ?: throw RuntimeException("Can not find ref $ref")
     }
 
     private fun visitCommit(walk: RevWalk, ref: Ref, filter: RevFilter, visitor: (RevCommit) -> Unit) {
@@ -62,6 +81,17 @@ class GitService(gitRepo: File) : AutoCloseable {
     ) {
         if (commit.parentCount <= 0) return
         visitDiff(commit.getParent(0), commit, pathFilter, typeFilters, diffsFilter, diffCallBack)
+    }
+
+    suspend fun visitDiffWithParentAsync(
+        commit: RevCommit,
+        pathFilter: TreeFilter?,
+        typeFilters: List<DiffEntry.ChangeType>,
+        diffsFilter: (List<DiffEntry>) -> Boolean = { _ -> true },
+        diffCallBack: suspend (DiffEntry, ObjectReader) -> Unit
+    ) {
+        if (commit.parentCount <= 0) return
+        visitDiffAsync(commit.getParent(0), commit, pathFilter, typeFilters, diffsFilter, diffCallBack)
     }
 
     fun visitDiff(
@@ -93,6 +123,43 @@ class GitService(gitRepo: File) : AutoCloseable {
             } else {
                 logger.info { "ignore ${newCommit.id.name}" }
             }
+        }
+    }
+
+    suspend fun visitDiffAsync(
+        oldCommit: RevCommit,
+        newCommit: RevCommit,
+        pathFilter: TreeFilter?,
+        typeFilters: List<DiffEntry.ChangeType>,
+        diffsFilter: (List<DiffEntry>) -> Boolean = { _ -> true },
+        diffCallBack: suspend (DiffEntry, ObjectReader) -> Unit
+    ) {
+        val newTree = CanonicalTreeParser()
+        val oldTree = CanonicalTreeParser()
+        val objectReader = repository.newObjectReader()
+        objectReader.use { reader ->
+            newTree.reset(reader, newCommit.tree.id)
+            oldCommit.tree?.let { oldTree.reset(reader, it.id) } ?: return
+        }
+        val diffs = git.diff()
+            .setNewTree(newTree)
+            .setOldTree(oldTree)
+            .setPathFilter(pathFilter)
+            .call()
+            .filter { it.changeType in typeFilters }
+
+        if (diffsFilter(diffs)) {
+            diffs.forEach { diff ->
+                withContext(Dispatchers.IO) {
+                    launch {
+                        repository.newObjectReader().use {
+                            diffCallBack(diff, it)
+                        }
+                    }
+                }
+            }
+        } else {
+            logger.info { "ignore ${newCommit.id.name}" }
         }
     }
 
