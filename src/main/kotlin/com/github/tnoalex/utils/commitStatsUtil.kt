@@ -23,12 +23,16 @@ fun statsCommit(gitService: GitService, mainRef: String?): String {
                 .setRevFilter(RevFilter.NO_MERGES)
                 .all()
         }) { log ->
+            val regex = "(NPE|null)".toRegex(RegexOption.IGNORE_CASE)
             val (flag, add, del) = diffVisit(log, treeWalk.pathString, gitService) ?: return@visitLogs
             if (flag) modifierCount++
             addLoc += add
             delLoc += del
-            if (listOf(modifierCount, addLoc, delLoc).any { t -> t != 0L }) {
-                repoStats.add(listOf(treeWalk.pathString, modifierCount, addLoc, delLoc))
+            val commitMessage = log.fullMessage
+            val commitHash = log.id.name
+            if (listOf(modifierCount, addLoc, delLoc).any { t -> t != 0L } && regex.containsMatchIn(commitMessage)) {
+                repoStats.add(listOf(treeWalk.pathString, commitHash, modifierCount, addLoc, delLoc, commitMessage))
+                //repoStats.add(listOf(treeWalk.pathString, modifierCount, addLoc, delLoc))
             }
         }
 
@@ -70,9 +74,9 @@ private fun modifierStats(text: String): Pair<Long, Long> {
 
 
 private fun writeCsv(result: ArrayList<List<Any>>): String {
-    val sb = StringBuilder("path,modifierCount,addLocs,delLocs\n")
+    val sb = StringBuilder("path,hash,modifierCount,addLocs,delLocs,commitMessage\n")
     result.forEach {
-        sb.append(it.joinToString(",")).append("\n")
+        sb.append(it.joinToString(",") { element -> element.toString().replace("\n", " ").replace(",", "") }).append("\n")
     }
     return sb.toString()
 }
