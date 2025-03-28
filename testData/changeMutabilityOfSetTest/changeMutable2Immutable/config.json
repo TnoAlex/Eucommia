@@ -1,0 +1,7 @@
+{
+  "newName": "new.kt",
+  "oldName": "old.kt",
+  "result": [
+    "change_mutability_of_set"
+  ]
+}

@@ -142,5 +142,30 @@ class HandlerTest : BaseHandlerTest() {
     
     
     }
+        
+    @Nested
+    inner class ChangeMutabilityOfSetTestTest {
+        @Test
+        fun test_changeImmutable2Mutable() {
+            doValidate(
+                """testData/changeMutabilityOfSetTest/changeImmutable2Mutable""",
+                """new.kt""",
+                """old.kt""",
+                listOf<String>("change_mutability_of_set")
+            )
+        }
+    
+        @Test
+        fun test_changeMutable2Immutable() {
+            doValidate(
+                """testData/changeMutabilityOfSetTest/changeMutable2Immutable""",
+                """new.kt""",
+                """old.kt""",
+                listOf<String>("change_mutability_of_set")
+            )
+        }
+    
+    
+    }
     
 }

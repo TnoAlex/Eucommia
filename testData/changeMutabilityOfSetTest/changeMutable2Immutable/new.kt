@@ -1,0 +1,3 @@
+fun func(): List<*> {
+    TODO()
+}

@@ -1,7 +1,5 @@
 package com.github.tnoalex
 
-import ch.qos.logback.classic.Level
-import ch.qos.logback.classic.LoggerContext
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
@@ -18,10 +16,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 
@@ -75,7 +70,11 @@ class CliParser : CliktCommand(name = "eucommia") {
                     val resultPath = Paths.get(storeFullPath, "$repoName.csv").pathString
                     val finishedPath =
                         Paths.get(storeFullPath, "$repoName-finished.csv").pathString
-                    val finished = FileService.readLines(finishedPath)?.toSet() ?: emptySet()
+                    val finished = FileService.readLines(finishedPath)?.map {
+                        val r = it.substring(0, 40)
+                        require(r.length == 40)
+                        r
+                    }?.toSet() ?: emptySet()
                     val finishedCommitChannel = Channel<String>(65536)
                     val resultChannel = Channel<String>(65536)
                     excavateAstDiffAsync(gitService, mainRefname, {
