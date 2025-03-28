@@ -62,7 +62,6 @@ class CliParser : CliktCommand(name = "eucommia") {
     ).int().default(Int.MAX_VALUE)
 
     override fun run() {
-        (LoggerFactory.getILoggerFactory() as LoggerContext).getLogger(Logger.ROOT_LOGGER_NAME).level = Level.INFO
         Run.initGenerators()
         visitRootFiles()
     }
