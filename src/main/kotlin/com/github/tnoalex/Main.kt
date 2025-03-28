@@ -13,10 +13,8 @@ import com.github.tnoalex.utils.distillPath
 import com.github.tnoalex.utils.excavateAstDiffAsync
 import com.github.tnoalex.utils.statsCommit
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.runBlocking
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 
@@ -77,19 +75,18 @@ class CliParser : CliktCommand(name = "eucommia") {
                     }?.toSet() ?: emptySet()
                     val finishedCommitChannel = Channel<String>(65536)
                     val resultChannel = Channel<String>(65536)
-                    excavateAstDiffAsync(gitService, mainRefname, {
-                        if (finished.contains(it.id.name)) {
-                            return@excavateAstDiffAsync false
-                        }
-                        finishedCommitChannel.send(it.id.name)
-                        true
-                    }, { it.size <= maxDiffFileNumber },
+                    excavateAstDiffAsync(gitService, mainRefname,
+                        commitFilter = {
+                            if (finished.contains(it.id.name)) {
+                                return@excavateAstDiffAsync false
+                            }
+                            finishedCommitChannel.send(it.id.name)
+                            true
+                        }, diffsFilter = { it.size <= maxDiffFileNumber },
                         onFinish = {
                             finishedCommitChannel.close()
                             resultChannel.close()
-                        }) { astDiff ->
-                        resultChannel.send(astDiff.simpleToString())
-                    }
+                        }) { astDiff -> resultChannel.send(astDiff.simpleToString()) }
 
                     runBlocking {
                         val writeFinished = async {

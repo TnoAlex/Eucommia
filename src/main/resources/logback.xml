@@ -15,6 +15,6 @@
         <appender-ref ref="stdout"/>
     </root>
 
-    <logger name="com.github.tnoalex.handle" level="trace"/>
+    <logger name="com.github.tnoalex" level="trace"/>
     <logger name="ch.qos.logback.classic" level="error" additivity="false" ref="stdout"/>
 </configuration>

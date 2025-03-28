@@ -45,18 +45,18 @@ fun excavateAstDiffAsync(
     onFinish: () -> Unit,
     successCollector: suspend (AstDiff) -> Unit,
 ) {
-    runBlocking {
+    CoroutineScope(Dispatchers.IO).launch {
         val commitChannel = Channel<RevCommit>(1024)
         logger.info { "start visit repo: ${gitService.repoName}" }
         launch { gitService.visitCommitAsync(mainRef, RevFilter.NO_MERGES, commitChannel) }
         for (revCommit in commitChannel) {
-            launch(Dispatchers.IO) {
+            launch {
                 revCommit.visitCommit(commitFilter, gitService, diffsFilter, successCollector)
             }
         }
+        onFinish()
+        logger.info { "finish visit repo: ${gitService.repoName}" }
     }
-    onFinish()
-    logger.info { "finish visit repo: ${gitService.repoName}" }
 }
 
 private suspend fun RevCommit.visitCommit(
