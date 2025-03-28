@@ -12,9 +12,14 @@ import com.github.gumtreediff.client.Run
 import com.github.tnoalex.file.FileService
 import com.github.tnoalex.git.GitManager
 import com.github.tnoalex.utils.distillPath
-import com.github.tnoalex.utils.excavateAstDiff
+import com.github.tnoalex.utils.excavateAstDiffAsync
 import com.github.tnoalex.utils.statsCommit
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Paths
@@ -22,7 +27,7 @@ import kotlin.io.path.pathString
 
 private val logger = KotlinLogging.logger("Eucommia")
 
-class CliParser: CliktCommand(name = "eucommia") {
+class CliParser : CliktCommand(name = "eucommia") {
     private val rootPath by argument(name = "rootPath", help = "The root path of git repositories").file(
         mustExist = true,
         canBeFile = false,
@@ -57,7 +62,6 @@ class CliParser: CliktCommand(name = "eucommia") {
     ).int().default(Int.MAX_VALUE)
 
     override fun run() {
-        (LoggerFactory.getILoggerFactory() as LoggerContext).getLogger(Logger.ROOT_LOGGER_NAME).level = Level.INFO
         Run.initGenerators()
         visitRootFiles()
     }
@@ -72,16 +76,36 @@ class CliParser: CliktCommand(name = "eucommia") {
                     val finishedPath =
                         Paths.get(storeFullPath, "$repoName-finished.csv").pathString
                     val finished = FileService.readLines(finishedPath)?.toSet() ?: emptySet()
-
-                    excavateAstDiff(gitService, mainRefname, {
+                    val finishedCommitChannel = Channel<String>(65536)
+                    val resultChannel = Channel<String>(65536)
+                    excavateAstDiffAsync(gitService, mainRefname, {
                         if (finished.contains(it.id.name)) {
-                            return@excavateAstDiff false
+                            return@excavateAstDiffAsync false
                         }
-                        FileService.writeAppend(finishedPath, it.id.name)
+                        finishedCommitChannel.send(it.id.name)
                         true
-                    }, { it.size <= maxDiffFileNumber }) { astDiff ->
-                        FileService.writeAppend(resultPath, astDiff.simpleToString())
-                        logger.info { "${astDiff.commitId} done" }
+                    }, { it.size <= maxDiffFileNumber },
+                        onFinish = {
+                            finishedCommitChannel.close()
+                            resultChannel.close()
+                        }) { astDiff ->
+                        resultChannel.send(astDiff.simpleToString())
+                    }
+
+                    runBlocking {
+                        val writeFinished = async {
+                            for (finishedId in finishedCommitChannel) {
+                                FileService.writeAppend(finishedPath, finishedId)
+                                logger.info { "finished $finishedId" }
+                            }
+                        }
+                        val writeResult = async {
+                            for (resultId in resultChannel) {
+                                FileService.writeAppend(resultPath, resultId)
+                                logger.info { "write result: $resultId" }
+                            }
+                        }
+                        awaitAll(writeFinished, writeResult)
                     }
                 }
 
