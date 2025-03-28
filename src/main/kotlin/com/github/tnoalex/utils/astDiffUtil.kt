@@ -17,7 +17,6 @@ import java.io.InputStreamReader
 import java.io.Reader
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.CopyOnWriteArraySet
 
 private val logger = KotlinLogging.logger {}
 private val OR_PATH_FILTER =
@@ -44,7 +43,7 @@ fun excavateAstDiffAsync(
     gitService: GitService, mainRef: String?, commitFilter: suspend (RevCommit) -> Boolean,
     diffsFilter: (List<DiffEntry>) -> Boolean = { _ -> true },
     onFinish: () -> Unit,
-    collector: suspend (AstDiff) -> Unit,
+    successCollector: suspend (AstDiff) -> Unit,
 ) {
     runBlocking {
         val commitChannel = Channel<RevCommit>(1024)
@@ -52,7 +51,7 @@ fun excavateAstDiffAsync(
         launch { gitService.visitCommitAsync(mainRef, RevFilter.NO_MERGES, commitChannel) }
         for (revCommit in commitChannel) {
             launch(Dispatchers.IO) {
-                revCommit.visitCommit(commitFilter, gitService, diffsFilter, collector)
+                revCommit.visitCommit(commitFilter, gitService, diffsFilter, successCollector)
             }
         }
     }
@@ -64,7 +63,7 @@ private suspend fun RevCommit.visitCommit(
     commitFilter: suspend (RevCommit) -> Boolean,
     gitService: GitService,
     diffsFilter: (List<DiffEntry>) -> Boolean,
-    collector: suspend (AstDiff) -> Unit
+    successCollector: suspend (AstDiff) -> Unit
 ) {
     val valuePlaceHolder = Any()
     val revCommit = this
@@ -106,7 +105,7 @@ private suspend fun RevCommit.visitCommit(
     tasks.awaitAll()
     logger.debug { "end collect commit ${revCommit.id.name}" }
     if (filePaths.isNotEmpty()) {
-        collector(
+        successCollector(
             AstDiff(
                 revCommit.id.name, shortenFilePaths(filePaths),
                 astDiffs.toList().map { it.first }
