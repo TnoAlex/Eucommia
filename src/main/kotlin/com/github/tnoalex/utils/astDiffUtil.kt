@@ -50,9 +50,7 @@ fun excavateAstDiffAsync(
         logger.info { "start visit repo: ${gitService.repoName}" }
         launch { gitService.visitCommitAsync(mainRef, RevFilter.NO_MERGES, commitChannel) }
         for (revCommit in commitChannel) {
-            launch {
-                revCommit.visitCommit(commitFilter, gitService, diffsFilter, successCollector)
-            }
+            revCommit.visitCommit(commitFilter, gitService, diffsFilter, successCollector)
         }
         onFinish()
         logger.info { "finish visit repo: ${gitService.repoName}" }

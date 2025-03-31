@@ -11,10 +11,11 @@ import com.github.tnoalex.file.FileService
 import com.github.tnoalex.git.GitManager
 import com.github.tnoalex.utils.distillPath
 import com.github.tnoalex.utils.excavateAstDiffAsync
-import com.github.tnoalex.utils.statsCommit
+import com.github.tnoalex.utils.statsCommitAsync
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import java.io.File
 import java.nio.file.Paths
 import kotlin.io.path.pathString
 
@@ -106,9 +107,11 @@ class CliParser : CliktCommand(name = "eucommia") {
                 }
 
                 1 -> {
-                    statsCommit(gitService, mainRefname).also {
+                    val file = File(Paths.get(storeFullPath, "${repoName}.csv").pathString)
+                    if (file.exists()) return@createGitServices
+                    statsCommitAsync(gitService, mainRefname).also {
                         FileService.write(
-                            Paths.get(storeFullPath, repoName, ".csv").pathString,
+                            Paths.get(storeFullPath, "${repoName}.csv").pathString,
                             it.toByteArray()
                         )
                         logger.info { "$repoName done" }

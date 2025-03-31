@@ -30,7 +30,7 @@ class GitService(gitRepo: File) : AutoCloseable {
         return DiffFormatter(outputStream).also { f -> f.setRepository(repository);f.setContext(context) }
     }
 
-    private fun useRevWalk(walker: (RevWalk) -> Unit) {
+    private inline fun useRevWalk(walker: (RevWalk) -> Unit) {
         RevWalk(repository).use(walker)
     }
 
@@ -177,7 +177,33 @@ class GitService(gitRepo: File) : AutoCloseable {
         }
     }
 
+    suspend fun visitTreeAsync(
+        ref: String?, treeFilter: TreeFilter?, isRecursive: Boolean,
+        visitor: suspend (TreeWalk) -> Unit
+    ) {
+        val treeWalk = TreeWalk(repository)
+        useRevWalk { revWalk ->
+            treeWalk.use { walk ->
+                walk.addTree(revWalk.parseCommit(getRef(ref).objectId).tree)
+                walk.isRecursive = isRecursive
+                walk.filter = treeFilter
+                while (walk.next()) {
+                    visitor(walk)
+                }
+            }
+        }
+    }
+
     fun visitLogs(logConfigurator: (LogCommand) -> LogCommand, visitor: (RevCommit) -> Unit) {
+        logConfigurator(git.log()).call().forEach {
+            visitor(it)
+        }
+    }
+
+    suspend fun visitLogsAsync(
+        logConfigurator: suspend (LogCommand) -> LogCommand,
+        visitor: suspend (RevCommit) -> Unit
+    ) {
         logConfigurator(git.log()).call().forEach {
             visitor(it)
         }
