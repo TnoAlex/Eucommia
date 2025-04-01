@@ -9,7 +9,7 @@ object FileService {
     fun write(filePath: String, content: ByteArray) {
         val targetFile = File(filePath)
         val parentFile = targetFile.parentFile
-        if (!parentFile.exists()) {
+        if (parentFile != null && !parentFile.exists()) {
             parentFile.mkdirs()
         }
         if (!targetFile.exists()) {

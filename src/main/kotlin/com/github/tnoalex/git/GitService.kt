@@ -5,8 +5,12 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.LogCommand
+import org.eclipse.jgit.api.errors.JGitInternalException
+import org.eclipse.jgit.api.errors.NoHeadException
 import org.eclipse.jgit.diff.DiffEntry
 import org.eclipse.jgit.diff.DiffFormatter
+import org.eclipse.jgit.dircache.DirCacheIterator
+import org.eclipse.jgit.internal.JGitText
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.lib.ObjectReader
 import org.eclipse.jgit.lib.Ref
@@ -14,10 +18,14 @@ import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.revwalk.filter.RevFilter
 import org.eclipse.jgit.treewalk.CanonicalTreeParser
+import org.eclipse.jgit.treewalk.FileTreeIterator
 import org.eclipse.jgit.treewalk.TreeWalk
 import org.eclipse.jgit.treewalk.filter.TreeFilter
+import org.eclipse.jgit.util.io.NullOutputStream
 import java.io.File
+import java.io.IOException
 import java.io.OutputStream
+
 
 class GitService(gitRepo: File) : AutoCloseable {
     private val logger = KotlinLogging.logger {}
@@ -105,24 +113,29 @@ class GitService(gitRepo: File) : AutoCloseable {
         val newTree = CanonicalTreeParser()
         val oldTree = CanonicalTreeParser()
         val objectReader = repository.newObjectReader()
-        objectReader.use { reader ->
-            newTree.reset(reader, newCommit.tree.id)
-            oldCommit.tree?.let { oldTree.reset(reader, it.id) } ?: return
+        try {
+            objectReader.use { reader ->
+                newTree.reset(reader, newCommit.tree.id)
+                oldCommit.tree?.let { oldTree.reset(reader, it.id) } ?: return
+                DiffFormatter(NullOutputStream.INSTANCE).use { diffFmt ->
+                    diffFmt.setRepository(repository)
+                    diffFmt.pathFilter = pathFilter
+                    diffFmt.isDetectRenames = true
 
-            val diffs = git.diff()
-                .setNewTree(newTree)
-                .setOldTree(oldTree)
-                .setPathFilter(pathFilter)
-                .call()
-                .filter { it.changeType in typeFilters }
-
-            if (diffsFilter(diffs)) {
-                diffs.forEach { diff ->
-                    diffCallBack(diff, reader)
+                    val diffs = diffFmt.scan(oldTree, newTree)
+                    diffFmt.format(diffs)
+                    diffFmt.flush()
+                    if (diffsFilter(diffs.filter { it.changeType in typeFilters })) {
+                        diffs.forEach { diff ->
+                            diffCallBack(diff, reader)
+                        }
+                    } else {
+                        logger.info { "ignore ${newCommit.id.name}" }
+                    }
                 }
-            } else {
-                logger.info { "ignore ${newCommit.id.name}" }
             }
+        } catch (e: IOException) {
+            throw JGitInternalException(e.message, e)
         }
     }
 
